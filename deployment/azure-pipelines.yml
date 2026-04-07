@@ -1,0 +1,82 @@
+# ── Azure App Service startup command ────────────────────────────────────────
+# Set this as the "Startup Command" in Azure App Service > Configuration > General Settings:
+#
+#   python scripts/build_index.py && gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+#
+# Or for Docker-based deployment (recommended), use docker-compose.yml
+
+# ── azure-pipelines.yml — CI/CD pipeline for Azure DevOps ───────────────────
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  PYTHON_VERSION: "3.11"
+  ACR_NAME: "acmeragacr"                     # Your Azure Container Registry name
+  IMAGE_NAME: "rag-agent"
+  APP_SERVICE_NAME: "acme-rag-agent"         # Your Azure App Service name
+  RESOURCE_GROUP: "acme-rg"
+
+stages:
+  # ── Stage 1: Test ────────────────────────────────────────────────────────
+  - stage: Test
+    displayName: "Run Tests"
+    jobs:
+      - job: UnitTests
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: $(PYTHON_VERSION)
+
+          - script: |
+              pip install --upgrade pip
+              pip install -r requirements.txt
+            displayName: "Install dependencies"
+
+          - script: |
+              pip install pytest pytest-asyncio httpx
+              pytest tests/test_document_loader.py tests/test_session_memory.py -v
+            displayName: "Run unit tests"
+
+  # ── Stage 2: Build & Push Docker Image ───────────────────────────────────
+  - stage: Build
+    displayName: "Build & Push Image"
+    dependsOn: Test
+    condition: succeeded()
+    jobs:
+      - job: BuildAndPush
+        steps:
+          - task: Docker@2
+            displayName: "Build and push to ACR"
+            inputs:
+              containerRegistry: "$(ACR_NAME)-connection"   # Azure service connection name
+              repository: $(IMAGE_NAME)
+              command: buildAndPush
+              Dockerfile: Dockerfile
+              tags: |
+                latest
+                $(Build.BuildId)
+
+  # ── Stage 3: Deploy to Azure App Service ─────────────────────────────────
+  - stage: Deploy
+    displayName: "Deploy to Azure"
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - deployment: DeployToAppService
+        environment: "production"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebAppContainer@1
+                  displayName: "Deploy container to App Service"
+                  inputs:
+                    azureSubscription: "$(AZURE_SUBSCRIPTION_CONNECTION)"
+                    appName: $(APP_SERVICE_NAME)
+                    resourceGroupName: $(RESOURCE_GROUP)
+                    imageName: "$(ACR_NAME).azurecr.io/$(IMAGE_NAME):$(Build.BuildId)"

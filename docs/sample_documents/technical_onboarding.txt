@@ -1,0 +1,85 @@
+ACME CORPORATION — TECHNICAL ONBOARDING GUIDE
+For: Software Engineers & Data Analysts | Version: 4.0 | Updated: January 2024
+===============================================================================
+
+1. FIRST-DAY CHECKLIST
+-----------------------
+□ Collect your laptop from IT (Building A, Room 103) — bring your employee ID
+□ Complete IT account setup (you'll receive a welcome email with credentials)
+□ Enroll in MFA via Microsoft Authenticator (mandatory — see Section 2)
+□ Join the company Slack workspace: acmecorp.slack.com (invite in your welcome email)
+□ Book a 1:1 with your manager within your first 2 days
+□ Review and sign the Employee Handbook (HR portal)
+
+2. ACCOUNT SETUP
+----------------
+Single Sign-On (SSO) via Azure Active Directory grants access to most tools automatically.
+Primary tools provisioned on Day 1:
+  - Microsoft 365 (Email, Teams, SharePoint, OneDrive)
+  - GitHub Enterprise (github.acmecorp.com) — request repo access from your team lead
+  - Jira & Confluence (projects.acmecorp.com)
+  - AWS Console — request access for your team's account from IT via ServiceNow
+
+MFA Setup:
+  1. Download Microsoft Authenticator on your phone
+  2. Visit aka.ms/mfasetup and follow the prompts
+  3. Also enable MFA for GitHub (required within 48 hours of account creation)
+
+3. DEVELOPMENT ENVIRONMENT
+---------------------------
+Standard Stack:
+  - IDE: VS Code (recommended) or JetBrains (license available from IT)
+  - Version Control: Git via GitHub Enterprise
+  - Containerization: Docker Desktop (license provided)
+  - Package Management: pip/poetry (Python), npm/yarn (JavaScript)
+  - Secrets Management: Azure Key Vault — never hardcode credentials
+
+Branch Strategy (GitFlow):
+  - main: production-ready code only; requires 2 PR approvals + CI pass
+  - develop: integration branch; requires 1 PR approval
+  - feature/your-feature-name: individual feature work
+  - hotfix/: urgent production fixes only
+
+CI/CD Pipeline:
+  GitHub Actions is used for all CI/CD. Pipelines are defined in .github/workflows/.
+  All commits to develop and main trigger automated tests, linting, and security scans.
+  Deployment to staging is automatic on merge to develop; production requires manual approval.
+
+4. CODING STANDARDS
+-------------------
+Python: Follow PEP 8. Use Black for formatting, flake8 for linting, mypy for type checking.
+JavaScript/TypeScript: ESLint + Prettier with company config (see .eslintrc in template repo).
+All functions must have docstrings/JSDoc comments.
+Test coverage minimum: 80% for new code.
+PR descriptions must include: What changed, Why, How to test, Linked Jira ticket.
+
+5. INFRASTRUCTURE & CLOUD
+--------------------------
+Primary Cloud: Microsoft Azure
+  - Azure Kubernetes Service (AKS) for container orchestration
+  - Azure SQL / Cosmos DB for data storage
+  - Azure Blob Storage for object storage
+  - Azure Service Bus for messaging
+
+Secondary Cloud: AWS (legacy services and data pipelines)
+  - S3 for raw data lake
+  - RDS PostgreSQL for some legacy systems
+
+Infrastructure as Code: Terraform (all infra changes must go through Terraform, not manual console changes).
+All Azure resources must follow the naming convention: acme-{env}-{service}-{region} (e.g., acme-prod-api-eastus).
+
+6. KEY CONTACTS
+---------------
+IT Helpdesk: it@acmecorp.com | ext. 1100 | ServiceNow: servicenow.acmecorp.com
+Engineering Manager: eng-managers@acmecorp.com
+DevOps/Platform Team: devops@acmecorp.com | #devops on Slack
+Security Team: security@acmecorp.com
+Data Team: #data-team on Slack
+
+7. IMPORTANT RESOURCES
+-----------------------
+Internal Wiki (Confluence): wiki.acmecorp.com
+API Docs: developers.acmecorp.com
+Architecture Diagrams: wiki.acmecorp.com/architecture
+Runbooks: wiki.acmecorp.com/runbooks
+On-call Schedule: pagerduty.acmecorp.com (PagerDuty; access granted after 3 months)
