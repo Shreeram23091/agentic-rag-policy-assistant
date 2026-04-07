@@ -2,6 +2,8 @@
 
 An AI-powered question-answering agent that answers employee and customer queries about internal company documents using **Retrieval-Augmented Generation (RAG)**. Built with FastAPI, OpenAI / Azure OpenAI, and FAISS.
 
+Interactive API Docs: http://localhost:8000/docs
+(Available once the Uvicorn server is running locally)
 ---
 
 ## Architecture Overview
