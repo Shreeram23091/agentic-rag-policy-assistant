@@ -1,0 +1,15 @@
+Cybersecurity and Data Protection Policy
+
+Employees must follow secure development practices.
+
+Rules:
+- Do not share credentials.
+- Use multi-factor authentication.
+- Encrypt confidential project data.
+- Report phishing attempts immediately.
+- Use company-approved devices only.
+
+Restricted actions:
+- Unauthorized USB device usage
+- Sharing internal firmware externally
+- Uploading source code to public repositories

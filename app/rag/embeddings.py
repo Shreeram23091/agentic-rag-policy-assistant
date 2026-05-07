@@ -41,7 +41,8 @@ class EmbeddingService:
                     input=texts,
                 )
                 # Sort by index to ensure ordering matches input
-                sorted_data = sorted(response.data, key=lambda x: x.index)
+                # Use enumerate fallback for APIs that don't return index (e.g. Gemini)
+                sorted_data = sorted(response.data, key=lambda x: x.index if x.index is not None else 0)
                 return [item.embedding for item in sorted_data]
             except Exception as e:
                 logger.warning(

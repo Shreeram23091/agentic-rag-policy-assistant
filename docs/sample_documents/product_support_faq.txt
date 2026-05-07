@@ -1,0 +1,16 @@
+Product Support FAQ
+
+Q: Which IDE is recommended for STM32 development?
+A: STM32CubeIDE is the official recommended IDE.
+
+Q: Which debugger is commonly used?
+A: ST-Link debugger.
+
+Q: Which operating systems are supported?
+A: Windows, Linux, and macOS.
+
+Q: Which programming language is mainly used?
+A: Embedded C.
+
+Q: What communication protocols are supported?
+A: UART, SPI, I2C, CAN, USB, and Ethernet.

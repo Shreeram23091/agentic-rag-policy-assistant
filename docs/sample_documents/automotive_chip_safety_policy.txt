@@ -1,0 +1,17 @@
+Automotive Chip Safety Policy
+
+Automotive semiconductor products must comply with ISO 26262 standards.
+
+Safety procedures:
+- Functional safety analysis
+- Failure mode testing
+- Thermal stress validation
+- Power reliability testing
+- EMC compliance verification
+
+Automotive-grade chips must pass:
+- Temperature testing
+- Vibration testing
+- Reliability testing
+
+All safety incidents must be reported within 24 hours.

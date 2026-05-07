@@ -1,0 +1,20 @@
+Industrial IoT Architecture
+
+Industrial IoT systems consist of:
+- Sensors
+- Microcontrollers
+- Connectivity modules
+- Cloud platforms
+- Monitoring dashboards
+
+Communication standards:
+- MQTT
+- Modbus
+- CAN
+- OPC-UA
+
+Security requirements:
+- Device authentication
+- Secure boot
+- Encrypted communication
+- Firmware integrity validation

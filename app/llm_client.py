@@ -9,15 +9,23 @@ from openai import AsyncAzureOpenAI, AsyncOpenAI
 from app.config import Settings, get_settings
 
 
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+
 @lru_cache
 def get_chat_client(settings: Settings | None = None) -> AsyncOpenAI | AsyncAzureOpenAI:
-    """Return an async OpenAI (or Azure OpenAI) client for chat completions."""
+    """Return an async OpenAI (or Azure OpenAI or Gemini) client for chat completions."""
     cfg = settings or get_settings()
     if cfg.is_azure:
         return AsyncAzureOpenAI(
             api_key=cfg.azure_openai_api_key,
             azure_endpoint=cfg.azure_openai_endpoint,
             api_version=cfg.azure_openai_api_version,
+        )
+    if cfg.is_gemini:
+        return AsyncOpenAI(
+            api_key=cfg.gemini_api_key,
+            base_url=GEMINI_BASE_URL,
         )
     return AsyncOpenAI(api_key=cfg.openai_api_key)
 

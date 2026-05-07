@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     # ── OpenAI / Azure OpenAI ────────────────────────────────────────────────
-    openai_api_type: Literal["openai", "azure"] = "openai"
+    openai_api_type: Literal["openai", "azure", "gemini"] = "openai"
 
     # Standard OpenAI
     openai_api_key: str = ""
@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     azure_openai_chat_deployment: str = "gpt-4o"
     azure_openai_embed_deployment: str = "text-embedding-3-small"
 
+    # Google Gemini (OpenAI-compatible API)
+    gemini_api_key: str = ""
+    gemini_chat_model: str = "models/gemini-2.5-flash"
+    gemini_embed_model: str = "models/gemini-embedding-001"
+
+    # Tavily Search API
+    tavily_api_key: str = ""
+    
     # ── RAG / Vector Store ───────────────────────────────────────────────────
     faiss_index_path: str = "./data/faiss_index"
     documents_path: str = "./docs/sample_documents"
@@ -55,19 +63,19 @@ class Settings(BaseSettings):
 
     @property
     def chat_model(self) -> str:
-        return (
-            self.azure_openai_chat_deployment
-            if self.openai_api_type == "azure"
-            else self.openai_chat_model
-        )
+        if self.openai_api_type == "azure":
+            return self.azure_openai_chat_deployment
+        elif self.openai_api_type == "gemini":
+            return self.gemini_chat_model
+        return self.openai_chat_model
 
     @property
     def embed_model(self) -> str:
-        return (
-            self.azure_openai_embed_deployment
-            if self.openai_api_type == "azure"
-            else self.openai_embed_model
-        )
+        if self.openai_api_type == "azure":
+            return self.azure_openai_embed_deployment
+        elif self.openai_api_type == "gemini":
+            return self.gemini_embed_model
+        return self.openai_embed_model
 
     @property
     def cors_origins(self) -> list[str]:
@@ -77,7 +85,10 @@ class Settings(BaseSettings):
     def is_azure(self) -> bool:
         return self.openai_api_type == "azure"
 
+    @property
+    def is_gemini(self) -> bool:
+        return self.openai_api_type == "gemini"
 
-@lru_cache
+
 def get_settings() -> Settings:
     return Settings()

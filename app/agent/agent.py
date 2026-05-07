@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import httpx
 import structlog
 
 from app.config import get_settings
@@ -43,11 +44,28 @@ TOOLS: list[dict[str, Any]] = [
                     "query": {
                         "type": "string",
                         "description": "The refined search query to look up in the document store.",
-                    },
-                    "reason": {
+                    }
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": (
+                "Search the internet for real-time information, news, or general world knowledge "
+                "that is not likely to be in the internal knowledge base. Use this for questions "
+                "about current events, public figures, or technical details not covered in internal docs."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
                         "type": "string",
-                        "description": "Brief explanation of why you're searching the documents.",
-                    },
+                        "description": "The search query to look up on the web.",
+                    }
                 },
                 "required": ["query"],
             },
@@ -57,29 +75,16 @@ TOOLS: list[dict[str, Any]] = [
 
 # ── System prompts ────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are ACME Assistant, an intelligent internal support agent for ACME Corporation.
+SYSTEM_PROMPT = """You are STMicroelectronics Assistant, a professional and helpful technical expert from STMicroelectronics.
 
-Your role is to help employees and customers by answering their questions accurately and concisely.
+Your goal is to provide clear, direct, and natural answers to questions about STM32 products, manufacturing, and company technical guidelines.
 
-## Decision Framework
-- For questions about ACME's **internal policies, products, procedures, FAQs, or technical documentation**:
-  → ALWAYS use the `search_documents` tool to look up current information first.
-- For **general knowledge questions** (e.g., definitions, calculations, general advice) not specific to ACME:
-  → Answer directly from your training knowledge.
-- When **uncertain** whether the information exists in documents:
-  → Use the tool — it's better to search and find nothing than to hallucinate.
-
-## Response Guidelines
-- Be **concise and direct** — answer the question, then offer context.
-- **Cite your sources** when answering from documents (e.g., "According to the Leave Policy…").
-- If the documents don't contain the answer, say so clearly and suggest who to contact.
-- Keep a professional but friendly tone.
-- If the question is ambiguous, ask for clarification before using the tool.
-
-## Formatting
-- Use bullet points or numbered lists for multi-part answers.
-- Highlight key numbers, dates, and thresholds (e.g., **18 days**, **90 days**).
-- Keep responses under 400 words unless detail is explicitly requested.
+## Conversational Guidelines
+- Answer naturally, as a human expert would. 
+- **CRITICAL**: Do NOT say things like "I searched the documents" or "According to the stm32_overview.txt file". Just state the facts.
+- Use your internal technical knowledge and the provided context to answer.
+- If you don't know the answer, politely explain that you don't have that specific information yet.
+- Be concise but thorough. Use formatting (like bolding) to make key points stand out.
 """
 
 AUGMENTED_PROMPT_TEMPLATE = """Based on the following retrieved document excerpts, answer the user's question.
@@ -104,8 +109,6 @@ class AgentResponse:
         self.raw_chunks = raw_chunks or []
 
 
-# ... (Keep all your imports, TOOLS, and PROMPTS exactly as they are) ...
-
 class Agent:
     def __init__(self, retrieve_fn) -> None:
         self._retrieve = retrieve_fn
@@ -118,80 +121,117 @@ class Agent:
         history: list[MessageDict] | None = None,
     ) -> AgentResponse:
         history = history or []
-        messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
-        messages.extend(history)
-        messages.append({"role": "user", "content": user_query})
-
-        logger.info("Agent invoked", query=user_query[:80], history_len=len(history))
+        
+        logger.info("Agent invoked", query=user_query[:80])
 
         used_rag = False
         retrieved_chunks: list[dict] = []
+        web_results: list[str] = []
         answer = ""
 
         try:
-            # ── Step 1: Attempt First LLM call (Tool Use) ────────────────────
+            # ── Step 1: Pre-retrieve local documents (Always first) ──────────
+            retrieved_chunks = await self._retrieve(user_query)
+            used_rag = len(retrieved_chunks) > 0
+            context = self._format_context(retrieved_chunks)
+
+            # ── Step 2: Single LLM call with context + web tool as backup ──
+            messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+            messages.extend(history)
+            
+            prompt = (
+                f"User Question: {user_query}\n\n"
+                f"INTERNAL CONTEXT FROM STMICRO DOCUMENTS:\n{context}\n\n"
+                "INSTRUCTION: Use the internal context above to answer the question naturally. "
+                "If the context does not contain the answer, use the 'search_web' tool to find the information on the internet."
+            )
+            messages.append({"role": "user", "content": prompt})
+
             response = await self._client.chat.completions.create(
                 model=self._settings.chat_model,
                 messages=messages,
-                tools=TOOLS,
+                tools=TOOLS, # Include search_web tool
                 tool_choice="auto",
                 temperature=0.2,
-                max_tokens=1024,
             )
             choice = response.choices[0]
 
-            # ── Step 2: Handle Tool Call ─────────────────────────────────────
+            # ── Step 3: Handle Web Search Fallback (only if LLM chooses) ─────
             if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
                 tool_call = choice.message.tool_calls[0]
-                function_args = json.loads(tool_call.function.arguments)
-                search_query = function_args.get("query", user_query)
-
-                retrieved_chunks = await self._retrieve(search_query)
-                used_rag = True
-
-                context_str = self._format_context(retrieved_chunks)
-                tool_result_content = AUGMENTED_PROMPT_TEMPLATE.format(context=context_str)
-
-                # ── Step 3: Attempt Final Answer call ────────────────────────
-                messages_with_tool = messages + [
-                    choice.message,
-                    {"role": "tool", "tool_call_id": tool_call.id, "content": tool_result_content},
-                ]
-
-                final_response = await self._client.chat.completions.create(
-                    model=self._settings.chat_model,
-                    messages=messages_with_tool,
-                    temperature=0.2,
-                    max_tokens=1024,
-                )
-                answer = final_response.choices[0].message.content or ""
+                if tool_call.function.name == "search_web":
+                    args = json.loads(tool_call.function.arguments)
+                    web_query = args.get("query", user_query)
+                    
+                    logger.info("Local docs insufficient, calling search_web", query=web_query)
+                    web_results = await self._search_web(web_query)
+                    
+                    # Final generation with web results
+                    web_context = "\n".join([f"- {r}" for r in web_results])
+                    messages.append(choice.message)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": "search_web",
+                        "content": f"Web search results:\n{web_context}"
+                    })
+                    
+                    final_response = await self._client.chat.completions.create(
+                        model=self._settings.chat_model,
+                        messages=messages,
+                        temperature=0.1,
+                    )
+                    answer = final_response.choices[0].message.content or ""
+                else:
+                    # Should not happen as we only gave search_web, but for safety:
+                    answer = choice.message.content or ""
             else:
                 answer = choice.message.content or ""
 
         except Exception as e:
-            # ── THE DEADLINE SURVIVAL FALLBACK ──
-            logger.warning("Azure Chat API failed. Switching to Mock Response.", error=str(e))
-            
-            # Fallback: Force a RAG retrieval manually if the LLM couldn't decide
-            if not retrieved_chunks:
-                retrieved_chunks = await self._retrieve(user_query)
-                used_rag = True
-            
-            if retrieved_chunks:
-                top_context = retrieved_chunks[0]['text'][:300]
-                source_file = retrieved_chunks[0]['source']
-                answer = (
-                    f"**[MOCK RESPONSE - Azure Policy Restricted]**\n\n"
-                    f"I found relevant information in **{source_file}**: \n\n"
-                    f"> \"...{top_context}...\"\n\n"
-                    "The RAG pipeline successfully retrieved this context, but the final LLM "
-                    "generation is currently simulated due to Azure deployment restrictions."
-                )
-            else:
-                answer = "I'm sorry, I couldn't access the AI model or find relevant documents to answer your question."
+            logger.exception("Agent execution failed")
+            answer = "I'm sorry, I'm having a little trouble summarizing that information right now. Could you please try asking in a slightly different way?"
+
+        except Exception as e:
+            logger.exception("Agent execution failed")
+            answer = "I'm sorry, I'm having a little trouble summarizing that information right now. Could you please try asking in a slightly different way?"
 
         sources = list({chunk["source"] for chunk in retrieved_chunks})
-        return AgentResponse(answer=answer, sources=sources, used_rag=used_rag, raw_chunks=retrieved_chunks)
+        if web_results:
+            sources.append("Web Search")
+
+        return AgentResponse(
+            answer=answer,
+            sources=sources,
+            used_rag=used_rag,
+            raw_chunks=retrieved_chunks,
+        )
+
+    async def _search_web(self, query: str) -> list[str]:
+        """Call Tavily API to get search results."""
+        if not self._settings.tavily_api_key:
+            logger.warning("Tavily API key not set, skipping web search")
+            return ["Web search skipped: No API key provided."]
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.tavily.com/search",
+                    json={
+                        "api_key": self._settings.tavily_api_key,
+                        "query": query,
+                        "search_depth": "basic",
+                        "max_results": 3,
+                    },
+                    timeout=10.0
+                )
+                response.raise_for_status()
+                data = response.json()
+                results = [f"{r['title']}: {r['content']} (Link: {r['url']})" for r in data.get("results", [])]
+                return results
+        except Exception as e:
+            logger.error("Web search failed", error=str(e))
+            return [f"Web search failed: {str(e)}"]
 
     def _format_context(self, chunks: list[dict]) -> str:
         if not chunks: return "No relevant documents found."

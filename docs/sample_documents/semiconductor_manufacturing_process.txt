@@ -1,0 +1,23 @@
+Semiconductor Manufacturing Process
+
+STMicroelectronics follows advanced semiconductor fabrication processes.
+
+Major stages:
+1. Wafer fabrication
+2. Oxidation
+3. Photolithography
+4. Etching
+5. Ion implantation
+6. Metallization
+7. Packaging
+8. Testing
+
+Cleanroom protocols are mandatory.
+
+Employees must:
+- Wear ESD-safe equipment
+- Follow contamination prevention rules
+- Use antistatic wristbands
+- Maintain environmental compliance
+
+Quality checks are performed during each production stage.

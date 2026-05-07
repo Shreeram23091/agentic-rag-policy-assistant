@@ -1,0 +1,20 @@
+Edge AI Platforms
+
+STMicroelectronics provides Edge AI solutions for low-power AI inference.
+
+Supported technologies:
+- TinyML
+- Neural network acceleration
+- Sensor fusion
+- Real-time analytics
+
+Popular tools:
+- STM32Cube.AI
+- NanoEdge AI Studio
+
+Use cases:
+- Predictive maintenance
+- Smart cameras
+- Voice recognition
+- Industrial monitoring
+- Smart agriculture

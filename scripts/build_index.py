@@ -44,7 +44,7 @@ async def main(force: bool) -> None:
     await retriever.initialise(force_rebuild=force)
 
     if retriever.is_ready:
-        logger.info("Index build complete ✓")
+        logger.info("Index build complete")
     else:
         logger.error("Index build FAILED — check logs above")
         sys.exit(1)

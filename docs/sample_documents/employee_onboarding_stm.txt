@@ -1,0 +1,18 @@
+Employee Technical Onboarding
+
+New employees must complete:
+1. Security training
+2. Semiconductor basics training
+3. Embedded systems orientation
+4. Git workflow setup
+5. VPN configuration
+6. Email and internal portal setup
+
+Required software:
+- STM32CubeIDE
+- Visual Studio Code
+- Git
+- Python
+- Docker
+
+Access requests must be approved by the reporting manager.

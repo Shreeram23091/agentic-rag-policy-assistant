@@ -1,0 +1,24 @@
+Embedded Systems Development Guidelines
+
+All firmware development must follow coding standards.
+
+Guidelines:
+1. Use modular programming.
+2. Maintain hardware abstraction layers.
+3. Avoid hardcoded values.
+4. Use version control through Git.
+5. Perform unit testing before deployment.
+6. Follow MISRA C standards where applicable.
+
+Debugging tools:
+- JTAG
+- ST-Link
+- Logic analyzers
+- Oscilloscopes
+
+Firmware release process:
+1. Development
+2. Internal testing
+3. QA validation
+4. Regression testing
+5. Production release

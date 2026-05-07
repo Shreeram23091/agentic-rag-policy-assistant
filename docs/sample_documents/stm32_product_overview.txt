@@ -1,0 +1,28 @@
+STM32 Product Overview
+
+STM32 is a family of 32-bit microcontrollers developed by STMicroelectronics.
+
+Key STM32 series include:
+- STM32F4: High-performance microcontrollers
+- STM32L4: Ultra-low-power devices
+- STM32H7: Advanced high-performance processors
+- STM32G0: Cost-efficient general-purpose MCUs
+
+Applications:
+- Industrial automation
+- IoT devices
+- Automotive electronics
+- Consumer electronics
+- Smart home systems
+
+Development Tools:
+- STM32CubeIDE
+- STM32CubeMX
+- ST-Link Debugger
+
+Programming languages commonly used:
+- C
+- C++
+- Embedded C
+
+STM32 devices support interfaces such as UART, SPI, I2C, CAN, USB, and Ethernet.

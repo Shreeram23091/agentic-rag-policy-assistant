@@ -54,7 +54,7 @@ def _configure_logging() -> None:
 async def lifespan(app: FastAPI):
     _configure_logging()
     cfg = get_settings()
-    logger.info("Starting ACME RAG Agent", environment=cfg.environment)
+    logger.info("Starting STMicroelectronics AI Assistant", environment=cfg.environment)
 
     # Initialise singletons
     retriever = RAGRetriever()
@@ -66,6 +66,14 @@ async def lifespan(app: FastAPI):
     set_singletons(retriever=retriever, memory=memory, agent=agent)
 
     logger.info("Application ready", rag_ready=retriever.is_ready)
+    
+    # Print a helpful message for local development
+    if cfg.environment == "development":
+        print("\n" + "="*50)
+        print(f"STMicroelectronics AI Assistant is READY!")
+        print(f"Chat UI: http://localhost:{cfg.api_port}")
+        print(f"API Docs: http://localhost:{cfg.api_port}/docs")
+        print("="*50 + "\n")
     yield
 
     logger.info(
@@ -80,7 +88,7 @@ def create_app() -> FastAPI:
     cfg = get_settings()
 
     app = FastAPI(
-        title="ACME RAG Agent API",
+        title="STMicroelectronics RAG Agent API",
         description=(
             "An AI agent that answers questions about internal company documents "
             "using Retrieval-Augmented Generation (RAG). "
@@ -131,10 +139,13 @@ def create_app() -> FastAPI:
             content={"detail": "An unexpected error occurred.", "error_type": type(exc).__name__},
         )
 
-    # Root redirect to docs
+    # Root - Serve Chat UI
     @app.get("/", include_in_schema=False)
     async def root():
-        return JSONResponse({"message": "ACME RAG Agent API", "docs": "/docs"})
+        from fastapi.responses import FileResponse
+        import os
+        static_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+        return FileResponse(static_path)
 
     app.include_router(router)
     return app
